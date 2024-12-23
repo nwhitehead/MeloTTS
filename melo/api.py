@@ -16,6 +16,7 @@ from .models import SynthesizerTrn
 from .split_utils import split_sentence
 from .mel_processing import spectrogram_torch, spectrogram_torch_conv
 from .download_utils import load_or_download_config, load_or_download_model
+from .text import symbols
 
 class TTS(nn.Module):
     def __init__(self, 
@@ -137,7 +138,8 @@ class TTS(nn.Module):
         audio = self.audio_numpy_concat(audio_list, sr=self.hps.data.sampling_rate, speed=speed)
         time_per_frame = self.hps.data.hop_length / self.hps.data.sampling_rate
         phone_start_list = [t * time_per_frame for t in phone_start_list]
-        print(phone_list)
+        phone_text = [symbols[i] for i in phone_list]
+        print(phone_text)
         print(phone_start_list)
         if output_path is None:
             return audio
