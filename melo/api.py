@@ -84,6 +84,9 @@ class TTS(nn.Module):
         language = self.language
         texts = self.split_sentences_into_pieces(text, language, quiet)
         audio_list = []
+        phone_list = []
+        phone_start_list = []
+        current_frame = 0
         if pbar:
             tx = pbar(texts)
         else:
@@ -105,9 +108,10 @@ class TTS(nn.Module):
                 bert = bert.to(device).unsqueeze(0)
                 ja_bert = ja_bert.to(device).unsqueeze(0)
                 x_tst_lengths = torch.LongTensor([phones.size(0)]).to(device)
+                phone_list.extend(phones.tolist())
                 del phones
                 speakers = torch.LongTensor([speaker_id]).to(device)
-                audio = self.model.infer(
+                out = self.model.infer(
                         x_tst,
                         x_tst_lengths,
                         speakers,
@@ -119,13 +123,22 @@ class TTS(nn.Module):
                         noise_scale=noise_scale,
                         noise_scale_w=noise_scale_w,
                         length_scale=1. / speed,
-                    )[0][0, 0].data.cpu().float().numpy()
+                    )
+                audio = out[0][0, 0].data.cpu().float().numpy()
+                attn = out[1][0, 0].data.cpu().float().numpy()
                 del x_tst, tones, lang_ids, bert, ja_bert, x_tst_lengths, speakers
                 # 
+            # Find position of first non-zero entry for each column (start time for phone)
+            phone_start = (attn != 0).argmax(axis=0) + current_frame
+            current_frame += attn.shape[0]
             audio_list.append(audio)
+            phone_start_list.extend(phone_start.tolist())
         torch.cuda.empty_cache()
         audio = self.audio_numpy_concat(audio_list, sr=self.hps.data.sampling_rate, speed=speed)
-
+        time_per_frame = self.hps.data.hop_length / self.hps.data.sampling_rate
+        phone_start_list = [t * time_per_frame for t in phone_start_list]
+        print(phone_list)
+        print(phone_start_list)
         if output_path is None:
             return audio
         else:
