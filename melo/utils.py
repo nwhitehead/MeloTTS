@@ -12,6 +12,7 @@ import librosa
 from melo.text import cleaned_text_to_sequence, get_bert
 from melo.text.cleaner import clean_text
 from melo import commons
+import pyloudnorm
 
 MATPLOTLIB_FLAG = False
 
@@ -390,6 +391,12 @@ def get_logger(model_dir, filename="train.log"):
     h.setFormatter(formatter)
     logger.addHandler(h)
     return logger
+
+
+def fix_loudness(input, rate, level=-18.0):
+    meter = pyloudnorm.Meter(rate)
+    loudness = meter.integrated_loudness(input)
+    return pyloudnorm.normalize.loudness(input, loudness, level)
 
 
 class HParams:

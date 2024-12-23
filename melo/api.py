@@ -132,7 +132,7 @@ class TTS(nn.Module):
             # Find position of first non-zero entry for each column (start time for phone)
             phone_start = (attn != 0).argmax(axis=0) + current_frame
             current_frame += attn.shape[0]
-            audio_list.append(audio)
+            audio_list.append(utils.fix_loudness(audio, self.hps.data.sampling_rate))
             phone_start_list.extend(phone_start.tolist())
         torch.cuda.empty_cache()
         audio = self.audio_numpy_concat(audio_list, sr=self.hps.data.sampling_rate, speed=speed)
