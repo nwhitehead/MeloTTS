@@ -81,12 +81,9 @@ class TTS(nn.Module):
             print(" > ===========================")
         return texts
 
-    def tts_to_file(self, text, speaker_id, output_path=None, sdp_ratio=0.2, noise_scale=0.6, noise_scale_w=0.8, speed=1.0, pbar=None, format=None, position=None, quiet=False,):
+    def tts_iter(self, text, speaker_id, sdp_ratio=0.2, noise_scale=0.6, noise_scale_w=0.8, speed=1.0, pbar=None, position=None, quiet=False,):
         language = self.language
         texts = self.split_sentences_into_pieces(text, language, quiet)
-        audio_list = []
-        phone_list = []
-        phone_start_list = []
         current_frame = 0
         if pbar:
             tx = pbar(texts)
@@ -109,8 +106,6 @@ class TTS(nn.Module):
                 bert = bert.to(device).unsqueeze(0)
                 ja_bert = ja_bert.to(device).unsqueeze(0)
                 x_tst_lengths = torch.LongTensor([phones.size(0)]).to(device)
-                phone_list.extend(phones.tolist())
-                del phones
                 speakers = torch.LongTensor([speaker_id]).to(device)
                 out = self.model.infer(
                         x_tst,
@@ -125,22 +120,35 @@ class TTS(nn.Module):
                         noise_scale_w=noise_scale_w,
                         length_scale=1. / speed,
                     )
+                
                 audio = out[0][0, 0].data.cpu().float().numpy()
                 attn = out[1][0, 0].data.cpu().float().numpy()
                 del x_tst, tones, lang_ids, bert, ja_bert, x_tst_lengths, speakers
                 # 
             # Find position of first non-zero entry for each column (start time for phone)
-            phone_start = (attn != 0).argmax(axis=0) + current_frame
+            phones_start = ((attn != 0).argmax(axis=0) + current_frame).tolist()
             current_frame += attn.shape[0]
-            audio_list.append(utils.fix_loudness(audio, self.hps.data.sampling_rate))
-            phone_start_list.extend(phone_start.tolist())
+            audio = utils.fix_loudness(audio, self.hps.data.sampling_rate)
+            phones_text = [symbols[i] for i in phones.tolist()]
+            time_per_frame = self.hps.data.hop_length / self.hps.data.sampling_rate
+            phones_start_time = [t * time_per_frame for t in phones_start]
+            yield audio, phones_text, phones_start_time
+
         torch.cuda.empty_cache()
+
+    def tts_to_file(self, text, speaker_id, output_path=None, sdp_ratio=0.2, noise_scale=0.6, noise_scale_w=0.8, speed=1.0, pbar=None, format=None, position=None, quiet=False,):
+        audio_list = []
+        phones_text_list = []
+        phones_start_time_list = []
+        for audio, phones_text, phones_start_time in self.tts_iter(text, speaker_id, sdp_ratio, noise_scale, noise_scale_w, speed, pbar, position, quiet):
+            audio_list.append(audio)
+            phones_text_list.extend(phones_text)
+            phones_start_time_list.extend(phones_start_time)
+
         audio = self.audio_numpy_concat(audio_list, sr=self.hps.data.sampling_rate, speed=speed)
-        time_per_frame = self.hps.data.hop_length / self.hps.data.sampling_rate
-        phone_start_list = [t * time_per_frame for t in phone_start_list]
-        phone_text = [symbols[i] for i in phone_list]
-        print(phone_text)
-        print(phone_start_list)
+        print(phones_text_list)
+        print(phones_start_time_list)
+
         if output_path is None:
             return audio
         else:
