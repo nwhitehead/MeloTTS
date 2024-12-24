@@ -37,7 +37,6 @@ def get_text_for_tts_infer(text, language_str, hps, device, symbol_to_id=None):
         ja_bert = torch.zeros(768, len(phone))
     else:
         bert = get_bert(norm_text, word2ph, language_str, device)
-        del word2ph
         assert bert.shape[-1] == len(phone), phone
 
         if language_str == "ZH":
@@ -56,7 +55,7 @@ def get_text_for_tts_infer(text, language_str, hps, device, symbol_to_id=None):
     phone = torch.LongTensor(phone)
     tone = torch.LongTensor(tone)
     language = torch.LongTensor(language)
-    return bert, ja_bert, phone, tone, language
+    return bert, ja_bert, phone, tone, language, word2ph, norm_text
 
 def load_checkpoint(checkpoint_path, model, optimizer=None, skip_optimizer=False):
     assert os.path.isfile(checkpoint_path)
