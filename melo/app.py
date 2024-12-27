@@ -50,7 +50,7 @@ with gr.Blocks() as demo:
         language.input(load_speakers, inputs=[language, text], outputs=[speaker, text])
     btn = gr.Button('Synthesize', variant='primary')
     aud = gr.Audio(label='Audio', interactive=False)
-    metadata = gr.Textbox(label='Phonemes', interactive=False)
+    metadata = gr.Textbox(label='Metadata', interactive=False)
     btn.click(synthesize, inputs=[speaker, text, speed, language], outputs=[aud, metadata])
     gr.Markdown('WebUI by [mrfakename](https://twitter.com/realmrfakename).')
 @click.command()

@@ -99,9 +99,6 @@ class TTS(nn.Module):
                 t = re.sub(r'([a-z])([A-Z])', r'\1 \2', t)
             device = self.device
             bert, ja_bert, phones, tones, lang_ids, word2ph, norm_text = utils.get_text_for_tts_infer(t, language, self.hps, device, self.symbol_to_id)
-            print(word2ph)
-            print(norm_text)
-            print(t)
             with torch.no_grad():
                 x_tst = phones.to(device).unsqueeze(0)
                 tones = tones.to(device).unsqueeze(0)
@@ -158,13 +155,20 @@ class TTS(nn.Module):
             phones_start_time_list.extend(phones_start_time)
 
         audio = self.audio_numpy_concat(audio_list, sr=self.hps.data.sampling_rate, speed=speed)
-        print(phones_text_list)
-        print(tones)
-        print(phones_start_time_list)
 
         if metadata_path is not None:
             phones_txt = ' '.join(phones_text_list)
-            metadata_path.write(phones_txt)
+            metadata = {
+                'text': text,
+                'speaker_id': speaker_id,
+                'sdp_ratio': sdp_ratio,
+                'noise_scale': noise_scale,
+                'speed': speed,
+                'samplerate': self.hps.data.sampling_rate,
+                'phonemes': phones_text_list,
+                'phoneme_times': phones_start_time_list,
+            }
+            metadata_path.write(json.dumps(metadata, indent=4))
 
         if output_path is None:
             return audio

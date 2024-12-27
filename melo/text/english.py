@@ -225,8 +225,6 @@ def g2p(text, pad_start_end=True, tokenized=None):
             ph_groups.append([t])
         else:
             ph_groups[-1].append(t.replace("#", ""))
-    
-    print(ph_groups)
     phones = []
     tones = []
     word2ph = []
@@ -252,7 +250,6 @@ def g2p(text, pad_start_end=True, tokenized=None):
                 phone_len += 1
         aaa = distribute_phone(phone_len, word_len)
         word2ph += aaa
-        print(f'word2ph = {word2ph}')
     phones = [post_replace_ph(i) for i in phones]
 
     if pad_start_end:
