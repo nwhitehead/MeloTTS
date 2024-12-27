@@ -139,6 +139,22 @@ class TTS(nn.Module):
 
         torch.cuda.empty_cache()
 
+    def tts_demo(self, text, speaker_id, output_path=None, sdp_ratio=0.2, noise_scale=0.6, noise_scale_w=0.8, speed=1.0, pbar=None, format=None, position=None, quiet=False,):
+        audio_list = []
+        phones_text_list = []
+        phones_start_time_list = []
+        for audio, phones_text, phones_start_time in self.tts_iter(text, speaker_id, sdp_ratio, noise_scale, noise_scale_w, speed, pbar, position, quiet):
+            audio_list.append(audio)
+            phones_text_list.extend(phones_text)
+            phones_start_time_list.extend(phones_start_time)
+            current_audio = self.audio_numpy_concat(audio_list, sr=self.hps.data.sampling_rate, speed=speed)
+            #yield current_audio
+
+        audio = self.audio_numpy_concat(audio_list, sr=self.hps.data.sampling_rate, speed=speed)
+        print(phones_text_list)
+        print(phones_start_time_list)
+        return audio
+
     def tts_to_file(self, text, speaker_id, output_path=None, sdp_ratio=0.2, noise_scale=0.6, noise_scale_w=0.8, speed=1.0, pbar=None, format=None, position=None, quiet=False,):
         audio_list = []
         phones_text_list = []

@@ -30,8 +30,9 @@ default_text_dict = {
     
 def synthesize(speaker, text, speed, language, progress=gr.Progress()):
     bio = io.BytesIO()
-    models[language].tts_to_file(text, models[language].hps.data.spk2id[speaker], bio, speed=speed, pbar=progress.tqdm, format='wav')
+    models[language].tts_to_file(text, models[language].hps.data.spk2id[speaker], output_path=bio, speed=speed, pbar=progress.tqdm, format='wav')
     return bio.getvalue()
+
 def load_speakers(language, text):
     if text in list(default_text_dict.values()):
         newtext = default_text_dict[language]
