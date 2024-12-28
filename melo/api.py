@@ -101,7 +101,7 @@ class TTS(nn.Module):
             bert, ja_bert, phones, tones, lang_ids, word2ph, norm_text = utils.get_text_for_tts_infer(t, language, self.hps, device, self.symbol_to_id)
             with torch.no_grad():
                 x_tst = phones.to(device).unsqueeze(0)
-                tones = tones.to(device).unsqueeze(0)
+                tones_d = tones.to(device).unsqueeze(0)
                 lang_ids = lang_ids.to(device).unsqueeze(0)
                 bert = bert.to(device).unsqueeze(0)
                 ja_bert = ja_bert.to(device).unsqueeze(0)
@@ -111,7 +111,7 @@ class TTS(nn.Module):
                         x_tst,
                         x_tst_lengths,
                         speakers,
-                        tones,
+                        tones_d,
                         lang_ids,
                         bert,
                         ja_bert,
@@ -124,7 +124,7 @@ class TTS(nn.Module):
                 
                 audio = out[0][0, 0].data.cpu().float().numpy()
                 attn = out[1][0, 0].data.cpu().float().numpy()
-                del x_tst, lang_ids, bert, ja_bert, x_tst_lengths, speakers
+                del x_tst, tones_d, lang_ids, bert, ja_bert, x_tst_lengths, speakers
                 # 
             # Find position of first non-zero entry for each column (start time for phone)
             phones_start = ((attn != 0).argmax(axis=0) + current_frame).tolist()
@@ -133,43 +133,49 @@ class TTS(nn.Module):
             time_per_frame = self.hps.data.hop_length / self.hps.data.sampling_rate
             # Round start times to nearest millisecond (keeps as integers and has enough precision)
             phones_start_time = [round(t * time_per_frame * 1000) for t in phones_start]
-            renormed_tones = tones[0].tolist()
+            renormed_tones = tones.tolist()
             # Measure tones relative to language start
             renormed_tones = [tn - language_tone_start_map[language] if tn > 0 else tn for tn in renormed_tones]
             phones_text = [symbols[i] for i in phones.tolist()]
-            # Add numeric digits for tones that are not 0
-            phones_text = [f'{phones_text[i]}{str(renormed_tones[i]) if renormed_tones[i] > 0 else ''}' for i in range(len(phones_text))]
-            filtered_phones = [p for p in phones_text if p != '_']
-            filtered_tones = [t for p, t in zip(phones_text, renormed_tones) if p != '_']
-            filtered_times = [t for p, t in zip(phones_text, phones_start_time) if p != '_']
-            yield audio, filtered_phones, filtered_tones, filtered_times
+            # Compute a vector same size as phonemes that is word number, from word2ph which is phoneme lengths for words
+            word_index = [[i - 1] * count for i, count in enumerate(word2ph)]
+            # Flatten to go from [[0, 0, 0], [1], [2, 2, 2]] to [0, 0, 0, 1, 2, 2, 2]
+            word_index = [x for xs in word_index for x in xs]
+            # # Add numeric digits for tones that are not 0
+            # phones_text = [f'{phones_text[i]}{str(renormed_tones[i]) if renormed_tones[i] > 0 else ''}' for i in range(len(phones_text))]
+            filtered_phones = [{ 'phoneme': p, 'tone': tn, 'time': t, 'word': w } for (p, tn, t, w) in zip(phones_text, renormed_tones, phones_start_time, word_index) if p != '_']
+            metadata = {
+                'text': text,
+                'norm_text': norm_text,
+                'speaker_id': speaker_id,
+                'sdp_ratio': sdp_ratio,
+                'noise_scale': noise_scale,
+                'noise_scale_w': noise_scale_w,
+                'seed': seed,
+                'speed': speed,
+                'samplerate': self.hps.data.sampling_rate,
+                'phonemes': filtered_phones,
+            }
+
+            yield audio, metadata
 
         torch.cuda.empty_cache()
 
     def tts_to_file(self, text, speaker_id, output_path=None, metadata_path=None, sdp_ratio=0.2, noise_scale=0.6, noise_scale_w=0.8, speed=1.0, pbar=None, format=None, position=None, quiet=False, seed=1234):
         audio_list = []
+        metadata_result = None
         phones_text_list = []
         phones_start_time_list = []
-        for audio, phones_text, tones, phones_start_time in self.tts_iter(text, speaker_id, sdp_ratio, noise_scale, noise_scale_w, speed, pbar, position, quiet, seed=seed):
+        for audio, metadata in self.tts_iter(text, speaker_id, sdp_ratio, noise_scale, noise_scale_w, speed, pbar, position, quiet, seed=seed):
             audio_list.append(audio)
-            phones_text_list.extend(phones_text)
-            phones_start_time_list.extend(phones_start_time)
+            if metadata_result is None:
+                metadata_result = metadata
+            else:
+                metadata_result['phonemes'].extend(metadata['phonemes'])
 
         audio = self.audio_numpy_concat(audio_list, sr=self.hps.data.sampling_rate, speed=speed)
 
         if metadata_path is not None:
-            phones_txt = ' '.join(phones_text_list)
-            metadata = {
-                'text': text,
-                'speaker_id': speaker_id,
-                'sdp_ratio': sdp_ratio,
-                'noise_scale': noise_scale,
-                'seed': seed,
-                'speed': speed,
-                'samplerate': self.hps.data.sampling_rate,
-                'phonemes': phones_text_list,
-                'phoneme_times': phones_start_time_list,
-            }
             metadata_path.write(json.dumps(metadata, indent=4))
 
         if output_path is None:
