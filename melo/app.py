@@ -28,10 +28,10 @@ default_text_dict = {
     'KR': '최근 텍스트 음성 변환 분야가 급속도로 발전하고 있습니다.',    
 }
 
-def synthesize(speaker, text, speed, language, progress=gr.Progress()):
+def synthesize(speaker, text, speed, language, seed, progress=gr.Progress()):
     bio = io.BytesIO()
     metadata = io.StringIO()
-    models[language].tts_to_file(text, models[language].hps.data.spk2id[speaker], output_path=bio, metadata_path=metadata, speed=speed, pbar=progress.tqdm, format='wav')
+    models[language].tts_to_file(text, models[language].hps.data.spk2id[speaker], output_path=bio, metadata_path=metadata, speed=speed, pbar=progress.tqdm, format='wav', seed=seed)
     return bio.getvalue(), metadata.getvalue()
 
 def load_speakers(language, text):
@@ -47,11 +47,12 @@ with gr.Blocks() as demo:
         language = gr.Radio(['EN', 'ES', 'FR', 'ZH', 'JP', 'KR'], label='Language', value='EN')
         speed = gr.Slider(label='Speed', minimum=0.1, maximum=10.0, value=1.0, interactive=True, step=0.1)
         text = gr.Textbox(label="Text to speak", value=default_text_dict['EN'])
+        seed = gr.Slider(label="Seed", minimum=1, maximum=9999, value=1234, interactive=True, step=1)
         language.input(load_speakers, inputs=[language, text], outputs=[speaker, text])
     btn = gr.Button('Synthesize', variant='primary')
     aud = gr.Audio(label='Audio', interactive=False)
     metadata = gr.Textbox(label='Metadata', interactive=False)
-    btn.click(synthesize, inputs=[speaker, text, speed, language], outputs=[aud, metadata])
+    btn.click(synthesize, inputs=[speaker, text, speed, language, seed], outputs=[aud, metadata])
     gr.Markdown('WebUI by [mrfakename](https://twitter.com/realmrfakename).')
 @click.command()
 @click.option('--share', '-s', is_flag=True, show_default=True, default=False, help="Expose a publicly-accessible shared Gradio link usable by anyone with the link. Only share the link with people you trust.")

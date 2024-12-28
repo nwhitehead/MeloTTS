@@ -979,7 +979,9 @@ class SynthesizerTrn(nn.Module):
         sdp_ratio=0,
         y=None,
         g=None,
+        seed=1234,
     ):
+        torch.manual_seed(seed)
         # x, m_p, logs_p, x_mask = self.enc_p(x, x_lengths, tone, language, bert)
         # g = self.gst(y)
         if g is None:

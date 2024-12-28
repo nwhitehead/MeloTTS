@@ -81,7 +81,7 @@ class TTS(nn.Module):
             print(" > ===========================")
         return texts
 
-    def tts_iter(self, text, speaker_id, sdp_ratio=0.2, noise_scale=0.6, noise_scale_w=0.8, speed=1.0, pbar=None, position=None, quiet=False,):
+    def tts_iter(self, text, speaker_id, sdp_ratio=0.2, noise_scale=0.6, noise_scale_w=0.8, speed=1.0, pbar=None, position=None, quiet=False, seed=1234):
         language = self.language
         texts = self.split_sentences_into_pieces(text, language, quiet)
         current_frame = 0
@@ -119,6 +119,7 @@ class TTS(nn.Module):
                         noise_scale=noise_scale,
                         noise_scale_w=noise_scale_w,
                         length_scale=1. / speed,
+                        seed=seed,
                     )
                 
                 audio = out[0][0, 0].data.cpu().float().numpy()
@@ -145,11 +146,11 @@ class TTS(nn.Module):
 
         torch.cuda.empty_cache()
 
-    def tts_to_file(self, text, speaker_id, output_path=None, metadata_path=None, sdp_ratio=0.2, noise_scale=0.6, noise_scale_w=0.8, speed=1.0, pbar=None, format=None, position=None, quiet=False,):
+    def tts_to_file(self, text, speaker_id, output_path=None, metadata_path=None, sdp_ratio=0.2, noise_scale=0.6, noise_scale_w=0.8, speed=1.0, pbar=None, format=None, position=None, quiet=False, seed=1234):
         audio_list = []
         phones_text_list = []
         phones_start_time_list = []
-        for audio, phones_text, tones, phones_start_time in self.tts_iter(text, speaker_id, sdp_ratio, noise_scale, noise_scale_w, speed, pbar, position, quiet):
+        for audio, phones_text, tones, phones_start_time in self.tts_iter(text, speaker_id, sdp_ratio, noise_scale, noise_scale_w, speed, pbar, position, quiet, seed=seed):
             audio_list.append(audio)
             phones_text_list.extend(phones_text)
             phones_start_time_list.extend(phones_start_time)
@@ -163,6 +164,7 @@ class TTS(nn.Module):
                 'speaker_id': speaker_id,
                 'sdp_ratio': sdp_ratio,
                 'noise_scale': noise_scale,
+                'seed': seed,
                 'speed': speed,
                 'samplerate': self.hps.data.sampling_rate,
                 'phonemes': phones_text_list,
