@@ -4,8 +4,45 @@ import sys
 import random
 import p2v
 
+def my_p2v(phonemes, delta=0.0):
+    def v(p):
+        if p in ['', '-', '¡', ',']: return 'X'
+        if p in ['dh', 'th', 's', 'z', 'sh', 'zh']: return 'A'
+        if p in ['ah']: return 'D'
+        if p in ['f', 'V']: return 'G'
+        if p in ['iy']: return 'B'
+        if p in ['l']: return 'H'
+        if p in ['d', 't']: return 'F'
+        if p in ['eh']: return 'C'
+        if p in ['k', 'g']: return 'B'
+        if p in ['uw']: return 'F'
+        if p in ['p', 'b']: return 'A'
+        if p in ['ch', 'jh']: return 'F'
+        if p in ['hh']: return 'C'
+        if p in ['ae']: return 'C'
+        if p in ['n']: return 'A'
+        if p in ['r']: return 'E' # BEF
+        if p in ['ih']: return 'B'
+        if p in ['m']: return 'A'
+        if p in ['ay']: return 'D' # dipthong DB
+        if p in ['er']: return 'E'
+        if p in ['w']: return 'F'
+        if p in ['ng']: return 'E'
+        if p in ['aa']: return 'D'
+        if p in ['uh']: return 'F'
+        if p in ['aw']: return 'D'
+        raise Exception(f'Missing phoneme {p}')
+    return [
+        {
+            'viseme': v(ph['phoneme']),
+            'time': ph['time'] + delta,
+        }
+        for ph in phonemes
+    ]
+
 def main():
     data = json.loads(open('test2.json').read())
+    pdata = json.loads(open('data.json').read())
     screen = pg.display.set_mode((1024, 768))
     clock = pg.time.Clock()
     talk = pg.mixer.music.load('test2.ogg')
@@ -26,15 +63,18 @@ def main():
         'G': 'lisa-G',
         'H': 'lisa-H',
     }
+    phonemes = pdata['phonemes']
+    print(phonemes)
     imgs = {
         key: pg.image.load(f'{cue_map[key]}.png')
         for key in cue_map
     }
     delta = 0
-    visemes = [ {
-        'viseme': cue['value'],
-        'time': cue['start'] * 1000 + delta,
-    } for cue in data['mouthCues']]
+    # visemes = [ {
+    #     'viseme': cue['value'],
+    #     'time': cue['start'] * 1000 + delta,
+    # } for cue in data['mouthCues']]
+    visemes = my_p2v(phonemes, delta=-120)
     original_visemes = visemes[:]
     print(visemes)
 
@@ -43,6 +83,8 @@ def main():
         pg.display.flip()
         if playing:
             time = pg.time.get_ticks() - start_time
+            if time - last_transition_time > 100:
+                state = 'X'
             while len(visemes) > 0 and visemes[0]['time'] < time:
                 viseme = visemes.pop(0)
                 sys.stdout.write(f"{viseme['viseme']} ")
@@ -50,7 +92,7 @@ def main():
                 next_state = viseme['viseme']
             if len(visemes) == 0:
                 next_state = 'X'
-            if time - last_transition_time > 100:
+            if time - last_transition_time > 0:
                 state = next_state
                 last_transition_time = time
 
