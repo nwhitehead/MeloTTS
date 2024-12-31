@@ -21,13 +21,13 @@ def my_p2v(phonemes, delta=0.0):
         if p in ['hh']: return 'C'
         if p in ['ae']: return 'C'
         if p in ['n']: return 'A'
-        if p in ['r']: return 'E' # BEF
+        if p in ['r']: return 'C' # 'E' # BEF
         if p in ['ih']: return 'B'
         if p in ['m']: return 'A'
         if p in ['ay']: return 'D' # dipthong DB
-        if p in ['er']: return 'E'
+        if p in ['er']: return 'E' ##
         if p in ['w']: return 'F'
-        if p in ['ng']: return 'E'
+        if p in ['ng']: return 'C' # Changed
         if p in ['aa']: return 'B' # Changed
         if p in ['uh']: return 'F'
         if p in ['aw']: return 'C' # Changed to C
@@ -58,10 +58,10 @@ def main():
         'B': 'lisa-B',
         'C': 'lisa-C',
         'D': 'lisa-D',
-        'E': 'lisa-C',
+        'E': 'lisa-E',
         'F': 'lisa-F',
         'G': 'lisa-G',
-        'H': 'lisa-B',
+        'H': 'lisa-H',
     }
     phonemes = pdata['phonemes']
     print(' '.join([ph['phoneme'] for ph in phonemes]))
@@ -74,7 +74,7 @@ def main():
     #     'viseme': cue['value'],
     #     'time': cue['start'] * 1000 + delta,
     # } for cue in data['mouthCues']]
-    visemes = my_p2v(phonemes, delta=-120)
+    visemes = my_p2v(phonemes, delta=-70)
     original_visemes = visemes[:]
 
     while not done:
@@ -89,10 +89,10 @@ def main():
                 next_state = viseme['viseme']
             if len(visemes) == 0:
                 next_state = 'X'
-            if time - last_transition_time > 0:
+            if time - last_transition_time > 80:
                 state = next_state
                 last_transition_time = time
-            if time - last_transition_time > 50:
+            if time - last_transition_time > 100:
                 state = 'A'
 
         for event in pg.event.get():
