@@ -187,32 +187,6 @@ def text_normalize(text):
 
 model_id = 'bert-base-uncased'
 tokenizer = AutoTokenizer.from_pretrained(model_id)
-def g2p_old(text):
-    tokenized = tokenizer.tokenize(text)
-    # import pdb; pdb.set_trace()
-    phones = []
-    tones = []
-    words = re.split(r"([,;.\-\?\!\s+])", text)
-    for w in words:
-        if w.upper() in eng_dict:
-            phns, tns = refine_syllables(eng_dict[w.upper()])
-            phones += phns
-            tones += tns
-        else:
-            phone_list = list(filter(lambda p: p != " ", _g2p(w)))
-            for ph in phone_list:
-                if ph in arpa:
-                    ph, tn = refine_ph(ph)
-                    phones.append(ph)
-                    tones.append(tn)
-                else:
-                    phones.append(ph)
-                    tones.append(0)
-    # todo: implement word2ph
-    word2ph = [1 for i in phones]
-
-    phones = [post_replace_ph(i) for i in phones]
-    return phones, tones, word2ph
 
 def g2p(text, pad_start_end=True, tokenized=None):
     if tokenized is None:
@@ -228,26 +202,24 @@ def g2p(text, pad_start_end=True, tokenized=None):
     phones = []
     tones = []
     word2ph = []
-    for group in ph_groups:
+    word_array = ["".join(group) for group in ph_groups]
+    phone_list_grouped = _g2p.grouped(word_array)
+    phone_list_flat = [x for xs in phone_list_grouped for x in xs]
+
+    for ph in phone_list_flat:
+        if ph in arpa:
+            ph, tn = refine_ph(ph)
+            phones.append(ph)
+            tones.append(tn)
+        else:
+            phones.append(ph)
+            tones.append(0)
+
+    for i, group in enumerate(ph_groups):
         w = "".join(group)
         phone_len = 0
         word_len = len(group)
-        if w.upper() in eng_dict:
-            phns, tns = refine_syllables(eng_dict[w.upper()])
-            phones += phns
-            tones += tns
-            phone_len += len(phns)
-        else:
-            phone_list = list(filter(lambda p: p != " ", _g2p(w)))
-            for ph in phone_list:
-                if ph in arpa:
-                    ph, tn = refine_ph(ph)
-                    phones.append(ph)
-                    tones.append(tn)
-                else:
-                    phones.append(ph)
-                    tones.append(0)
-                phone_len += 1
+        phone_len += len(phone_list_grouped[i])
         aaa = distribute_phone(phone_len, word_len)
         word2ph += aaa
     phones = [post_replace_ph(i) for i in phones]
