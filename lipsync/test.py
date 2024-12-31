@@ -8,11 +8,11 @@ def my_p2v(phonemes, delta=0.0):
     def v(p):
         if p in ['', '-', '¡', ',']: return 'X'
         if p in ['dh', 'th', 's', 'z', 'sh', 'zh']: return 'A'
-        if p in ['ah']: return 'D'
+        if p in ['ah']: return 'C'
         if p in ['f', 'V']: return 'G'
         if p in ['iy']: return 'B'
         if p in ['l']: return 'H'
-        if p in ['d', 't']: return 'F'
+        if p in ['d', 't']: return 'B' # CHANGED
         if p in ['eh']: return 'C'
         if p in ['k', 'g']: return 'B'
         if p in ['uw']: return 'F'
@@ -28,9 +28,9 @@ def my_p2v(phonemes, delta=0.0):
         if p in ['er']: return 'E'
         if p in ['w']: return 'F'
         if p in ['ng']: return 'E'
-        if p in ['aa']: return 'D'
+        if p in ['aa']: return 'B' # Changed
         if p in ['uh']: return 'F'
-        if p in ['aw']: return 'D'
+        if p in ['aw']: return 'C' # Changed to C
         raise Exception(f'Missing phoneme {p}')
     return [
         {
@@ -58,13 +58,13 @@ def main():
         'B': 'lisa-B',
         'C': 'lisa-C',
         'D': 'lisa-D',
-        'E': 'lisa-E',
+        'E': 'lisa-C',
         'F': 'lisa-F',
         'G': 'lisa-G',
-        'H': 'lisa-H',
+        'H': 'lisa-B',
     }
     phonemes = pdata['phonemes']
-    print(phonemes)
+    print(' '.join([ph['phoneme'] for ph in phonemes]))
     imgs = {
         key: pg.image.load(f'{cue_map[key]}.png')
         for key in cue_map
@@ -76,15 +76,12 @@ def main():
     # } for cue in data['mouthCues']]
     visemes = my_p2v(phonemes, delta=-120)
     original_visemes = visemes[:]
-    print(visemes)
 
     while not done:
         screen.blit(imgs[state], (0, 0))
         pg.display.flip()
         if playing:
             time = pg.time.get_ticks() - start_time
-            if time - last_transition_time > 100:
-                state = 'X'
             while len(visemes) > 0 and visemes[0]['time'] < time:
                 viseme = visemes.pop(0)
                 sys.stdout.write(f"{viseme['viseme']} ")
@@ -95,6 +92,8 @@ def main():
             if time - last_transition_time > 0:
                 state = next_state
                 last_transition_time = time
+            if time - last_transition_time > 50:
+                state = 'A'
 
         for event in pg.event.get():
             if event.type == pg.QUIT:
@@ -107,6 +106,7 @@ def main():
                 state = 'X'
                 last_transition_time = 0
                 next_state = 'X'
+                print('\n')
 
 
 if __name__ == '__main__':
